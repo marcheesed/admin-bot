@@ -1,0 +1,6 @@
+.env
+.local\state\replit\agent
+__pycache__
+logs
+.replit
+pastry.diy.pem
