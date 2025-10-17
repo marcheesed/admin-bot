@@ -115,13 +115,23 @@ async def check_and_alert(channel):
 # --- Discord events ---
 @bot.event
 async def on_ready():
-    global pastry_client
+    global pastry_client, mod_bots_channel
     print(f"Logged in as {bot.user}")
+
+    # Initialize PastryClient
     pastry_client = await PastryClient(
         verify_ssl=True, cert_path=pem_cert_path if pem_content else None
     ).__aenter__()
     await pastry_client.refresh_database()
     print("Database preloaded!")
+
+    # Get #mod-bots channel once
+    for guild in bot.guilds:
+        mod_bots_channel = discord.utils.get(guild.text_channels, name="mod-bots")
+        if mod_bots_channel:
+            print(f"#mod-bots channel found in guild: {guild.name}")
+        else:
+            print(f"No #mod-bots channel in guild: {guild.name}")
 
 
 @bot.event
@@ -130,59 +140,51 @@ async def on_message(message):
         return
 
     content = message.content.strip()
-    channel = get_channel(message.guild)
+
+    if not mod_bots_channel:
+        print("Channel #mod-bots not found!")
+        return
+
+    # Send message to #mod-bots
+    await mod_bots_channel.send(content)
 
     # Admin-only commands
-    if (
-        content.startswith(
-            ("!ping", "!refresh", "!checkbanned", "!searchuser", "!searchurl")
-        )
-        and channel
+    if content.startswith(
+        ("!ping", "!refresh", "!checkbanned", "!searchuser", "!searchurl")
     ):
         if not message.author.guild_permissions.administrator:
-            await channel.send("You don't have permissions for this!")
+            await mod_bots_channel.send("You don't have permissions for this!")
             return
         if content.startswith("!ping"):
-            await channel.send(f"Pong! **Latency: {bot.latency * 1000:.2f}ms**")
+            await mod_bots_channel.send(
+                f"Pong! **Latency: {bot.latency * 1000:.2f}ms**"
+            )
         elif content.startswith("!refresh"):
             await pastry_client.refresh_database()
-            await channel.send("Database refreshed!")
+            await mod_bots_channel.send("Database refreshed!")
         elif content.startswith("!checkbanned"):
-            await check_and_alert(channel)
+            await check_and_alert(mod_bots_channel)
         elif content.startswith("!searchuser"):
             username = content[len("!searchuser") :].strip()
-            await channel.send(pastry_client.search_by_username(username))
+            await mod_bots_channel.send(pastry_client.search_by_username(username))
         elif content.startswith("!searchurl"):
             url = content[len("!searchurl") :].strip()
-            await channel.send(pastry_client.search_by_url(url))
+            await mod_bots_channel.send(pastry_client.search_by_url(url))
 
     # Add banned word
-    elif content.startswith("!addword") and channel:
+    elif content.startswith("!addword"):
         if not message.author.guild_permissions.administrator:
-            await channel.send("You don't have permissions for this!")
+            await mod_bots_channel.send("You don't have permissions for this!")
             return
         new_word = content[len("!addword") :].strip()
         add_banned_word(new_word)
         global banned_words
         banned_words = load_banned_words()
-        await channel.send(f"Added banned word: {new_word}")
+        await mod_bots_channel.send(f"Added banned word: {new_word}")
 
     # Word filter
     for word in banned_words:
-        if word in content.lower() and channel:
+        if word in content.lower():
             await message.delete()
-            await channel.send("You can't say that here!")
+            await mod_bots_channel.send("You can't say that here!")
             break
-
-
-# --- Run Discord bot in background ---
-def run_bot():
-    asyncio.run(bot.start(DISCORD_TOKEN))
-
-
-threading.Thread(target=run_bot).start()
-
-# --- Run Flask app ---
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
