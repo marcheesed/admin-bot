@@ -1,5 +1,5 @@
 .env
-.local\state\replit\agent
+.local
 __pycache__
 logs
 .replit
