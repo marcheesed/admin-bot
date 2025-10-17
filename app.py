@@ -90,10 +90,12 @@ def index():
 
 
 # --- Discord helpers ---
-def get_channel(guild):
-    return discord.utils.get(guild.text_channels, name="general") or (
-        guild.text_channels[0] if guild.text_channels else None
-    )
+def get_mod_bots_channel(guild):
+    # Look for #mod-bots
+    channel = discord.utils.get(guild.text_channels, name="mod-bots")
+    if not channel:
+        print(f"#mod-bots channel not found in guild {guild.name}")
+    return channel
 
 
 async def check_and_alert(channel):
