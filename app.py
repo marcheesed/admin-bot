@@ -130,7 +130,13 @@ async def on_message(message):
         return
 
     content = message.content.strip()
-    channel = get_channel(message.guild)
+    channel_name = "mod-bots" 
+    channel = discord.utils.get(message.guild.channels, name=channel_name)
+
+    if channel:
+        await channel.send(message.content.strip())
+    else:
+        print("Channel not found!")
 
     # Admin-only commands
     if (
