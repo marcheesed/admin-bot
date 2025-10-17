@@ -141,11 +141,16 @@ async def on_message(message):
 
     content = message.content.strip()
 
+    # Make sure mod_bots_channel exists
     if not mod_bots_channel:
         print("Channel #mod-bots not found!")
         return
 
-    # Send message to #mod-bots
+    # Only respond in #mod-bots
+    if message.channel != mod_bots_channel:
+        return
+
+    # Optional: echo message to the channel
     await mod_bots_channel.send(content)
 
     # Admin-only commands
